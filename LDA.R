@@ -1,0 +1,1 @@
+data = read.csv('review_pizza.csv')
