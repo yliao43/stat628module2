@@ -1,0 +1,90 @@
+---
+title: "score_analysis"
+author: "Yejia Liao"
+date: "March 4, 2019"
+output: html_document
+---
+
+# read data
+```{r}
+data = read.csv('bus_pizza.csv',header=TRUE)
+review=read.csv('sorted_corpus.csv',header = TRUE)
+```
+
+
+```{r}
+quantile(data$ratings)
+qplot(data$ratings,geom='histogram')
+sum(data$ratings<=2.75)
+sum(data$ratings>3.945329)
+```
+
+# retrieve business owners whose ratings are under 25% quantile 
+```{r}
+id=which(data$ratings<=2.75)
+b_id=data[id,]$business_id
+b_id
+```
+
+```{r}
+library(dplyr)
+library(ggplot2)
+```
+
+```{r}
+colnames(review)
+head(review)
+low_review = review %>% filter(business_id %in% b_id)
+low_review = low_review[,-c(1,2)]
+head(low_review)
+```
+
+```{r}
+library(MASS)
+library(lda)
+library(LDAvis)
+library(servr)
+```
+
+```{r}
+term.table <- table(unlist(low_review)) 
+term.table <- sort(term.table, decreasing = TRUE) 
+term.table=term.table[-1]
+head(term.table)
+vocab=names(term.table)
+```
+
+```{r}
+get.terms <- function(x) {
+index <- match(x, vocab) 
+index <- index[!is.na(index)] 
+rbind(as.integer(index - 1), as.integer(rep(1, length(index)))) 
+}
+documents <- lapply(low_review, get.terms)
+```
+
+```{r}
+k=20
+iter=100
+alpha = .1
+theta=.01
+```
+
+```{r}
+fit <- lda.collapsed.gibbs.sampler(documents = documents, K = k, vocab = vocab, num.iterations = iter, alpha = alpha, eta = theta, initial = NULL, burnin = 0, compute.log.likelihood = TRUE)
+```
+
+```{r}
+matrix <- t(apply(fit$document_sums + alpha, 2, function(x) x/sum(x))) 
+phi <- t(apply(t(fit$topics) + theta, 2, function(x) x/sum(x))) 
+term.frequency <- as.integer(term.table) 
+doc.length <- sapply(documents, function(x) sum(x[2, ])) 
+```
+
+```{r}
+json <- createJSON(phi = phi, theta = matrix, 
+doc.length = doc.length, vocab = vocab,
+term.frequency = term.frequency)
+serVis(json, out.dir = './vis', open.browser = FALSE)
+```
+
