@@ -1,0 +1,143 @@
+---
+title: "word_base"
+author: "Yejia Liao"
+date: "March 30, 2019"
+output: html_document
+---
+
+```{r}
+data=read.csv('unsorted_corpus.csv',header = T,stringsAsFactors = F)
+subdata=data[1:10000,]
+head(subdata)
+```
+
+# reviews contain service
+
+
+
+# apply lasso method 
+```{r}
+
+library(quanteda)
+```
+
+```{r}
+servicedata=data.frame()
+for (i in 1:dim(subdata)[1]){
+  if ('service' %in% subdata[i,]){
+    servicedata=rbind(servicedata,subdata[i,])
+  }
+  if(i %% 100 == 1){print(i)}
+}
+head(servicedata)
+#servicedata=servicedata[,-c(1,2)]
+```
+
+```{r}
+ratings=servicedata$stars
+recommend=c()
+for (i in 1:length(ratings)){
+  if (ratings[i]<4){recommend[i]=0}else{recommend[i]=1}
+}
+servicedata=servicedata[,-c(1,2)]
+```
+
+```{r}
+char=c()
+for (i in 1:dim(servicedata)[1]){
+  if(i%%100==1){print(i)}
+  char[i]=paste(servicedata[i,],collapse = ' ')
+}
+```
+
+```{r}
+dict=tokens_ngrams(tokens(char),n=1:2)
+```
+
+```{r}
+tokens(char[1:2])
+```
+
+
+```{r}
+dictdfm=dfm(dict,tolower = FALSE)
+```
+
+```{r}
+x=dfm_trim(dictdfm,sparsity = .98)
+```
+
+```{r}
+df=convert(x,to='data.frame')
+```
+
+```{r}
+dictdf=cbind(recommend,df)
+names(dictdf)[names(dictdf) == "review.Recommended.IND"] = "recommend"
+names(dictdf)=make.names(names(dictdf))
+dictdf=dictdf[,-c(2)]
+dictdf$recommend=factor(dictdf$recommend)
+```
+
+```{r}
+head(dictdf)
+```
+
+#--------------lasso-----------
+```{r}
+library(glmnet)
+```
+
+```{r}
+lassomodel=model.matrix(recommend~.,dictdf)
+```
+
+```{r}
+actual=as.numeric(dictdf$recommend)
+```
+
+```{r}
+cv.out <- cv.glmnet(lassomodel,actual,alpha=1,family="binomial",type.measure = "mse" )
+```
+
+```{r}
+plot(cv.out)
+```
+
+```{r}
+lambda_min <- cv.out$lambda.min
+lambda_1se <- cv.out$lambda.1se
+lambda_1se
+```
+
+```{r}
+coef=coef(cv.out,s=lambda_1se)
+lassocoef=as.matrix(coef(cv.out,s=lambda_1se))
+lassocoef
+```
+
+```{r}
+cv.lasso <- cv.glmnet(lassomodel, actual, alpha = 1, family = "binomial")
+review_logreg <- glmnet(lassomodel, actual, alpha = 1, family = "binomial",
+                lambda = cv.lasso$lambda.min)
+negative=as.matrix(coef(review_logreg))
+positive=as.matrix(exp(coef(review_logreg)))
+```
+
+```{r}
+write.csv(positive,'positive_service.csv')
+write.csv(negative,'negative_service.csv')
+```
+
+```{r}
+po=read.csv('positive_service.csv')
+a=po[order(po$s0,decreasing=T),]
+ne=read.csv('negative_service.csv')
+b=ne[order(ne$s0,decreasing=F),]
+```
+
+```{r}
+a;b
+```
+
+
