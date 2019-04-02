@@ -1,1 +1,9 @@
-# stat628module2
+# Stat 628 Module2 Tuesday Group 6
+
+The nicknames: "tutute" is Tianqi Li, "yliao43" is Yejia Liao, and "kateeee11" is Yaxin Deng.
+
+The code folder contains all the codes we write, including the data cleaning and model construction.
+
+The figures folder contains all the figures and tables we draw.
+
+Since the uploading size restriction of Github, the data folder only contains the positive score for JST.
