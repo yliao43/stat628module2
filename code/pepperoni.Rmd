@@ -1,0 +1,136 @@
+---
+title: "word_base"
+author: "Yejia Liao"
+date: "March 30, 2019"
+output: html_document
+---
+```{r}
+data=read.csv('data100.csv',header = T,stringsAsFactors = F)
+subdata=data[1:50000,]
+head(subdata)
+```
+# reviews contain pepperoni
+
+# apply lasso method 
+```{r}
+library(quanteda)
+
+```
+
+```{r}
+pepperonidata=data.frame()
+for (i in 1:dim(subdata)[1]){
+  if ('pepperoni' %in% subdata[i,]){
+    pepperonidata=rbind(pepperonidata,subdata[i,])
+  }
+  if(i %% 100 == 1){print(i)}
+}
+head(pepperonidata)
+#pepperonidata=pepperonidata[,-c(1,2)]
+```
+
+```{r}
+ratings=pepperonidata$stars
+recommend=c()
+for (i in 1:length(ratings)){
+  if (ratings[i]<4){recommend[i]=0}else{recommend[i]=1}
+}
+pepperonidata=pepperonidata[,-c(1,2)]
+```
+
+```{r}
+char=c()
+for (i in 1:dim(pepperonidata)[1]){
+  if(i%%100==1){print(i)}
+  char[i]=paste(pepperonidata[i,],collapse = ' ')
+}
+```
+
+```{r}
+dict=tokens_ngrams(tokens(char),n=1:2)
+```
+
+```{r}
+tokens(char[1:2])
+```
+
+```{r}
+dictdfm=dfm(dict,tolower = FALSE)
+```
+
+```{r}
+x=dfm_trim(dictdfm,sparsity = .98)
+```
+
+```{r}
+df=convert(x,to='data.frame')
+```
+
+```{r}
+dictdf=cbind(recommend,df)
+names(dictdf)[names(dictdf) == "review.Recommended.IND"] = "recommend"
+names(dictdf)=make.names(names(dictdf))
+dictdf=dictdf[,-c(2)]
+dictdf$recommend=factor(dictdf$recommend)
+```
+
+```{r}
+head(dictdf)
+```
+#--------------lasso-----------
+```{r}
+library(glmnet)
+```
+
+```{r}
+lassomodel=model.matrix(recommend~.,dictdf)
+```
+
+```{r}
+actual=as.numeric(dictdf$recommend)
+```
+
+```{r}
+cv.out <- cv.glmnet(lassomodel,actual,alpha=1,family="binomial",type.measure = "mse" )
+```
+
+```{r}
+plot(cv.out)
+```
+
+```{r}
+lambda_min <- cv.out$lambda.min
+lambda_1se <- cv.out$lambda.1se
+lambda_1se
+```
+
+```{r}
+coef=coef(cv.out,s=lambda_1se)
+lassocoef=as.matrix(coef(cv.out,s=lambda_1se))
+lassocoef
+```
+
+```{r}
+cv.lasso <- cv.glmnet(lassomodel, actual, alpha = 1, family = "binomial")
+review_logreg <- glmnet(lassomodel, actual, alpha = 1, family = "binomial",
+                lambda = cv.lasso$lambda.min)
+negative=as.matrix(coef(review_logreg))
+positive=as.matrix(exp(coef(review_logreg)))
+```
+
+```{r}
+write.csv(positive,'positive_pepperoni_high.csv')
+write.csv(negative,'negative_pepperoni_high.csv')
+```
+
+```{r}
+po=read.csv('positive_pepperoni_high.csv')
+a=po[order(po$s0,decreasing=T),]
+ne=read.csv('negative_pepperoni_high.csv')
+b=ne[order(ne$s0,decreasing=F),]
+```
+
+```{r}
+a;b
+```
+

@@ -1,0 +1,31 @@
+---
+title: "Untitled"
+author: "Yejia Liao"
+date: "March 31, 2019"
+output: html_document
+---
+
+
+
+```{r}
+library(ggplot2)
+```
+
+
+```{r}
+taste_high=read.csv('positive_taste_high.csv')
+taste_low=read.csv('negative_taste_low.csv')
+taste_high=taste_high[order(taste_high$s0,decreasing = T),]
+taste_low=taste_low[order(taste_low$s0,decreasing = F),]
+taste_high;taste_low
+```
+
+```{r}
+ggplot(taste_high[1:20,],aes(x=X,y=s0))+geom_bar(stat='identity',fill='red')+theme(axis.text.x = element_text(angle = 90,hjust = 1))
+```
+
+```{r}
+ggplot(taste_low[1:20,],aes(x=X,y=s0))+geom_bar(stat='identity',fill='blue')+theme(axis.text.x = element_text(angle = 90,hjust = 1))
+
+```
+
